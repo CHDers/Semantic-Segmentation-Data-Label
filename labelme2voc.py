@@ -23,9 +23,7 @@ def main(args):
     os.makedirs(osp.join(args.output_dir, "SegmentationClassnpy"))
     os.makedirs(osp.join(args.output_dir, "SegmentationClass"))
     if not args.noviz:
-        os.makedirs(
-            osp.join(args.output_dir, "SegmentationClassVisualization")
-        )
+        os.makedirs(osp.join(args.output_dir, "SegmentationClassVisualization"))
     print("Creating dataset:", args.output_dir)
 
     class_names = []
@@ -81,28 +79,49 @@ def main(args):
         np.save(out_lbl_file, lbl)
 
         if not args.noviz:
-            viz = imgviz.label2rgb(
-                label=lbl,
-                #                img=imgviz.rgb2gray(img),
-                image=img,
-                font_size=15,
-                label_names=class_names,
-                loc="rb",
-                alpha=0.4,  # 设置透明度（0.4表示标签区域有透明背景）
-            )
-            imgviz.io.imsave(out_viz_file, viz)
+            # 首先创建一个与原图相同的副本
+            viz = img.copy()  # 保持原图不变
+
+            # 创建一个颜色映射：为每个类别分配一个颜色
+            # 在此处，使用一组颜色（可以是不同的颜色，如红色、绿色、蓝色等）
+            class_colors = np.array([
+                [255, 0, 0],  # 红色 (R)
+                [0, 255, 0],  # 绿色 (G)
+                [0, 0, 255],  # 蓝色 (B)
+                [255, 255, 0],  # 黄色 (Y)
+                [0, 255, 255],  # 青色 (C)
+                [255, 0, 255]  # 品红色 (M)
+                # 可以根据类别数量添加更多颜色
+            ])
+
+            # 将原图转换为RGBA格式，添加透明度通道（alpha=1）
+            img_rgba = np.dstack([viz, np.ones(viz.shape[:2], dtype=np.uint8) * 255])  # 新增alpha通道，完全不透明
+
+            # 遍历每个类别，计算并叠加对应的颜色
+            for i in range(1, len(class_names)):  # 从1开始，0通常是背景类
+                class_mask = np.isin(lbl, i)  # 获取所有标注区域的mask
+                class_color = class_colors[i - 1]  # 获取当前类别的颜色
+
+                # 设置当前类别颜色带透明度
+                new_color = np.array([class_color[0], class_color[1], class_color[2], 0.4])  # 红、绿、蓝色 + alpha = 0.4
+
+                # 仅在目标物区域叠加带透明度的颜色
+                for c in range(viz.ndim):  # RGB通道
+                    # 计算加权平均，目标区域应用当前类别颜色，背景保持原图颜色
+                    img_rgba[..., c] = np.where(class_mask,
+                                                (new_color[c] * new_color[3] + img_rgba[..., c] * (1 - new_color[3])),
+                                                img_rgba[..., c])
+
+            # 保存合成后的图像，转换回RGB格式
+            imgviz.io.imsave(out_viz_file, img_rgba[..., :3])  # 只保存RGB部分
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", default="./labels",
-                        type=str, help="input annotated directory")
-    parser.add_argument("--output_dir", default="./voc",
-                        type=str, help="output dataset directory")
-    parser.add_argument(
-        "--labels", default="./label.txt", type=str, help="labels file")
-    parser.add_argument("--noviz", help="no visualization",
-                        action="store_true")
+    parser.add_argument("--input_dir", default="./labels", type=str, help="input annotated directory")
+    parser.add_argument("--output_dir", default="./voc1", type=str, help="output dataset directory")
+    parser.add_argument("--labels", default="./label.txt", type=str, help="labels file")
+    parser.add_argument("--noviz", help="no visualization", action="store_true")
     args = parser.parse_args()
     return args
 
