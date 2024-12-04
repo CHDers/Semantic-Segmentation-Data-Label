@@ -12,6 +12,7 @@ import imgviz
 import numpy as np
 import labelme
 import cv2
+import piexif
 
 
 def main(args):
@@ -52,18 +53,10 @@ def main(args):
 
         base = osp.splitext(osp.basename(filename))[0]
         out_img_file = osp.join(args.output_dir, "JPEGImages", base + ".jpg")
-        out_lbl_file = osp.join(
-            args.output_dir, "SegmentationClassnpy", base + ".npy"
-        )
-        out_png_file = osp.join(
-            args.output_dir, "SegmentationClass", base + ".png"
-        )
+        out_lbl_file = osp.join(args.output_dir, "SegmentationClassnpy", base + ".npy")
+        out_png_file = osp.join(args.output_dir, "SegmentationClass", base + ".png")
         if not args.noviz:
-            out_viz_file = osp.join(
-                args.output_dir,
-                "SegmentationClassVisualization",
-                base + ".jpg",
-            )
+            out_viz_file = osp.join(args.output_dir, "SegmentationClassVisualization", base + ".jpg",)
 
         with open(out_img_file, "wb") as f:
             f.write(label_file.imageData)
